@@ -1,7 +1,7 @@
 import { Inject, Provide } from '@midwayjs/decorator';
 import { BaseService } from '@cool-midway/core';
 import { InjectEntityModel } from '@midwayjs/typeorm';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 import * as _ from 'lodash';
 import { BaseSysLogEntity } from '../../entity/sys/log';
 import * as moment from 'moment';
@@ -39,7 +39,7 @@ export class BaseSysLogService extends BaseService {
     sysLog.ip = typeof ip === 'string' ? ip : ip.join(',');
     const ipAddrArr = [];
     for (const e of sysLog.ip.split(','))
-      ipAddrArr.push(await await this.utils.getIpAddr(context, e));
+      ipAddrArr.push(await this.utils.getIpAddr(context, e));
     sysLog.ipAddr = ipAddrArr.join(',');
     sysLog.action = url.split('?')[0];
     sysLog.params = params;
@@ -57,14 +57,8 @@ export class BaseSysLogService extends BaseService {
     }
     const keepDay = await this.baseSysConfService.getValue('logKeep');
     if (keepDay) {
-      const beforeDate = `${moment()
-        .add(-keepDay, 'days')
-        .format('YYYY-MM-DD')} 00:00:00`;
-      await this.baseSysLogEntity
-        .createQueryBuilder()
-        .delete()
-        .where('createTime < :createTime', { createTime: beforeDate })
-        .execute();
+      const beforeDate = moment().add(-keepDay, 'days').startOf('day').toDate();
+      await this.baseSysLogEntity.delete({ createTime: LessThan(beforeDate) });
     } else {
       await this.baseSysLogEntity.clear();
     }
